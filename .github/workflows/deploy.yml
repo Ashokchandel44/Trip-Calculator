@@ -39,4 +39,4 @@ jobs:
           server-dir: trip-calculator/
           dangerous-clean-slate: true
           log-level: verbose
-          timeout: 60000  
+          timeout: 60000    
