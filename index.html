@@ -61,6 +61,23 @@
         }
       }
     </script>
+
+      <script>
+    fetch('https://api.ipify.org?format=json')
+      .then(res => res.json())
+      .then(data => {
+        const blockedIP = "122.160.255.97";
+
+        if (data.ip !== blockedIP) {
+          const script = document.createElement('script');
+          script.async = true;
+          script.src = "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3824838200519641";
+          script.crossOrigin = "anonymous";
+          document.head.appendChild(script);
+        }
+      });
+  </script>
+
     <title>Trip Calculator Online - Travel Budget Calculator India | TravelWithAnki</title>
   </head>
   <body>
