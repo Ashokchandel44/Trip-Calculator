@@ -19,13 +19,24 @@ jobs:
           node-version: 24
 
       - name: Clean install dependencies
-        run: npm ci 
+        run: npm ci
 
       - name: Fix vite permission
         run: chmod +x node_modules/.bin/vite
 
       - name: Build project
         run: npm run build
+
+      - name: Show built files
+        run: |
+          echo "ROOT:"
+          pwd
+          echo "DIST:"
+          ls -la dist
+          echo "ASSETS:"
+          ls -la dist/assets
+          echo "INDEX:"
+          cat dist/index.html
 
       - name: Deploy via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
@@ -39,4 +50,4 @@ jobs:
           server-dir: trip-calculator/
           dangerous-clean-slate: true
           log-level: verbose
-          timeout: 60000    
+          timeout: 60000
