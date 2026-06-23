@@ -16,7 +16,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
 
       - name: Clean install dependencies
         run: npm ci
@@ -26,17 +26,6 @@ jobs:
 
       - name: Build project
         run: npm run build
-
-      - name: Show built files
-        run: |
-          echo "ROOT:"
-          pwd
-          echo "DIST:"
-          ls -la dist
-          echo "ASSETS:"
-          ls -la dist/assets
-          echo "INDEX:"
-          cat dist/index.html
 
       - name: Deploy via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
