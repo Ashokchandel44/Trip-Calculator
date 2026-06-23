@@ -1,4 +1,4 @@
-name: Deploy to Hostinger
+name: Deploy Trip Calculator
 
 on:
   push:
@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Setup Node
@@ -18,17 +18,36 @@ jobs:
         with:
           node-version: 20
 
-      - name: Install Dependencies
-        run: npm install
+      - name: Clean install dependencies
+        run: npm ci
 
-      - name: Build Project
+      - name: Fix vite permission
+        run: chmod +x node_modules/.bin/vite
+
+      - name: Build project
         run: npm run build
 
-      - name: FTP Deploy
+      - name: Show built files
+        run: |
+          echo "ROOT:"
+          pwd
+          echo "DIST:"
+          ls -la dist
+          echo "ASSETS:"
+          ls -la dist/assets
+          echo "INDEX:"
+          cat dist/index.html
+
+      - name: Deploy via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
-          server: ${{ secrets.FTP_SERVER }}
+          server: ${{ secrets.FTP_HOST }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftp
+          port: 21
           local-dir: dist/
           server-dir: public_html/trip-calculator/
+          dangerous-clean-slate: true
+          log-level: verbose
+          timeout: 60000
