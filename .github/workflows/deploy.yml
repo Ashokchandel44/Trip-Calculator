@@ -38,6 +38,24 @@ jobs:
           echo "INDEX:"
           cat dist/index.html
 
+
+
+      - name: Check FTP Secrets
+        run: |
+          if [ -z "${{ secrets.FTP_HOST }}" ]; then
+            echo "FTP_HOST missing"
+            exit 1
+          fi
+          if [ -z "${{ secrets.FTP_USERNAME }}" ]; then
+            echo "FTP_USERNAME missing"
+            exit 1
+          fi
+          if [ -z "${{ secrets.FTP_PASSWORD }}" ]; then
+            echo "FTP_PASSWORD missing"
+            exit 1
+          fi
+          echo "All FTP secrets found"
+          
       - name: Deploy via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
