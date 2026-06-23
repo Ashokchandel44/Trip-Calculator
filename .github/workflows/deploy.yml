@@ -47,7 +47,7 @@ jobs:
           protocol: ftp
           port: 21
           local-dir: dist/
-          server-dir: public_html/trip-calculator/
+          server-dir: trip-calculator/
           dangerous-clean-slate: true
           log-level: verbose
           timeout: 60000
