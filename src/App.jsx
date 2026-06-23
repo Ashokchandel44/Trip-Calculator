@@ -116,7 +116,7 @@ export default function App() {
         <section className="hero-panel">
           <div className="hero-copy">
             <p className="eyebrow">Smart Travel Budget Tool</p>
-            <h1>Trip Calculator for your next journey test</h1>
+            <h1>Trip Calculator for your next journey</h1>
             <p className="brand-line">
               Plan faster with <span className="script">TravelWithAnki</span>
             </p>
