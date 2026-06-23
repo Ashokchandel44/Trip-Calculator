@@ -19,7 +19,7 @@ jobs:
           node-version: 24
 
       - name: Clean install dependencies
-        run: npm ci
+        run: npm ci 
 
       - name: Fix vite permission
         run: chmod +x node_modules/.bin/vite
