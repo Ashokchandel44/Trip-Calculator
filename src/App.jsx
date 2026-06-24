@@ -96,7 +96,7 @@ export default function App() {
   }
 
   return (
-    <div className="site-shell">
+    <div className="site-shell"> 
       <header className="site-nav">
         <a className="site-logo" href="https://travelwithanki.com/" target="_blank" aria-label="TravelwithAnki Trip Calculator">
           <LogoText />
