@@ -17,7 +17,7 @@ const GROUNDED_MODELS = [
 const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 
 export async function generateTripEstimate(formData) {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+  const apiKey = normalizeApiKey(import.meta.env.VITE_GEMINI_API_KEY);
 
   if (!apiKey) {
     throw new Error('Travel planner is not configured yet. Add your API key in the .env file.');
@@ -88,6 +88,15 @@ export async function generateTripEstimate(formData) {
   } catch {
     return buildLocalEstimate(formData, lastError);
   }
+}
+
+function normalizeApiKey(value) {
+  return String(value || '')
+    .trim()
+    .replace(/^VITE_GEMINI_API_KEY=/, '')
+    .replace(/^GEMINI_API_KEY=/, '')
+    .replace(/^['"]|['"]$/g, '')
+    .trim();
 }
 
 async function requestGroundedTripEstimate({ apiKey, model, prompt, formData }) {
