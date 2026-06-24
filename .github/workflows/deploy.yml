@@ -25,9 +25,13 @@ jobs:
         run: chmod +x node_modules/.bin/vite
 
       - name: Check Gemini API Secret
+        env:
+          GEMINI_SECRET: ${{ secrets.VITE_GEMINI_API_KEY || secrets.GEMINI_API_KEY }}
         run: |
-          if [ -z "${{ secrets.VITE_GEMINI_API_KEY }}" ]; then
-            echo "VITE_GEMINI_API_KEY missing"
+          if [ -z "$GEMINI_SECRET" ]; then
+            echo "Gemini API key secret missing"
+            echo "Add it in GitHub repo: Settings > Secrets and variables > Actions > New repository secret"
+            echo "Secret name can be VITE_GEMINI_API_KEY or GEMINI_API_KEY"
             exit 1
           fi
           echo "Gemini API secret found"
@@ -35,7 +39,7 @@ jobs:
       - name: Build project
         run: npm run build
         env:
-          VITE_GEMINI_API_KEY: ${{ secrets.VITE_GEMINI_API_KEY }}
+          VITE_GEMINI_API_KEY: ${{ secrets.VITE_GEMINI_API_KEY || secrets.GEMINI_API_KEY }}
 
       - name: Show built files
         run: |
