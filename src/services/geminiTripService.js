@@ -78,6 +78,10 @@ export async function generateTripEstimate(formData) {
     }
   }
 
+  if (lastError?.code === 'AUTH' || lastError?.code === 'RATE_LIMIT') {
+    throw lastError;
+  }
+
   try {
     const routeEstimate = await requestRouteDistanceOnly({ apiKey, formData });
     return buildLocalEstimate(formData, lastError, routeEstimate);
@@ -178,6 +182,10 @@ async function requestTripEstimate({ ai, model, prompt, config, formData }) {
 }
 
 function normalizeSdkError(error) {
+  if (error?.code) {
+    return error;
+  }
+
   const message = error?.message || String(error);
   const parsed = parseSdkErrorMessage(message);
   const status = parsed?.error?.code || error?.status;
@@ -730,7 +738,7 @@ function getFriendlyApiError(status, errorText = '') {
   }
 
   if (status === 401 || status === 403) {
-    return 'Trip planner access was denied. Please verify the API key and project permissions.';
+    return 'Trip planner access was denied. Please verify the Gemini API key, project permissions, and API key restrictions.';
   }
 
   if (status === 404 && errorText.includes('models/gemini')) {
