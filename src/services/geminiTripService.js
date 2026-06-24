@@ -15,6 +15,7 @@ const GROUNDED_MODELS = [
 ];
 
 const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
+const GEMINI_INTERACTIONS_API = 'https://generativelanguage.googleapis.com/v1beta/interactions';
 
 export async function generateTripEstimate(formData) {
   const apiKey = normalizeApiKey(import.meta.env.VITE_GEMINI_API_KEY);
@@ -100,21 +101,19 @@ function normalizeApiKey(value) {
 }
 
 async function requestGroundedTripEstimate({ apiKey, model, prompt, formData }) {
-  const response = await fetch(`${GEMINI_API_BASE}/${model}:generateContent?key=${apiKey}`, {
+  const response = await fetch(GEMINI_INTERACTIONS_API, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      'x-goog-api-key': apiKey,
     },
     body: JSON.stringify({
-      contents: [
-        {
-          parts: [{ text: prompt }],
-        },
-      ],
-      tools: [{ google_search: {} }],
-      generationConfig: {
+      model,
+      input: prompt,
+      tools: [{ type: 'google_search' }],
+      generation_config: {
         temperature: 0.1,
-        maxOutputTokens: 2600,
+        max_output_tokens: 2600,
       },
     }),
   });
@@ -132,6 +131,22 @@ async function requestGroundedTripEstimate({ apiKey, model, prompt, formData }) 
 }
 
 function extractGeminiText(data) {
+  const outputText = data?.output_text || data?.outputText;
+
+  if (outputText) {
+    return String(outputText).trim();
+  }
+
+  const stepText = data?.steps
+    ?.flatMap((step) => step.content || [])
+    ?.map((content) => content.text || '')
+    ?.join('')
+    ?.trim();
+
+  if (stepText) {
+    return stepText;
+  }
+
   return data?.candidates?.[0]?.content?.parts
     ?.map((part) => part.text || '')
     .join('')
@@ -153,17 +168,19 @@ Shape:
 }
 `.trim();
 
-  const response = await fetch(`${GEMINI_API_BASE}/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+  const response = await fetch(GEMINI_INTERACTIONS_API, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      'x-goog-api-key': apiKey,
     },
     body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      tools: [{ google_search: {} }],
-      generationConfig: {
+      model: 'gemini-3.5-flash',
+      input: prompt,
+      tools: [{ type: 'google_search' }],
+      generation_config: {
         temperature: 0.05,
-        maxOutputTokens: 500,
+        max_output_tokens: 500,
       },
     }),
   });
@@ -746,8 +763,16 @@ function getFriendlyApiError(status, errorText = '') {
     return 'Trip planner could not process this request. Please check the input details.';
   }
 
-  if (status === 401 || status === 403) {
-    return 'Trip planner access was denied. Please verify the Gemini API key, project permissions, and API key restrictions.';
+  if (status === 401) {
+    if (/ACCESS_TOKEN_TYPE_UNSUPPORTED|invalid authentication credentials/i.test(errorText)) {
+      return 'Gemini API key is invalid for this API. Create a fresh Gemini API key in Google AI Studio and use only the key value, not the full .env line.';
+    }
+
+    return 'Gemini API key was rejected. Please verify the key value in GitHub Secrets and rebuild the live app.';
+  }
+
+  if (status === 403) {
+    return 'Gemini API key is blocked by project permissions or API key restrictions. Enable Generative Language API and allow your live domain in HTTP referrer restrictions.';
   }
 
   if (status === 404 && errorText.includes('models/gemini')) {
