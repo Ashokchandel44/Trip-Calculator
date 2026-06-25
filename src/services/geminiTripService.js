@@ -1,17 +1,5 @@
-const GEMINI_MODELS = [
-  'gemini-3.5-flash',
-  'gemini-flash-latest',
-  'gemini-3-flash',
-  'gemini-3.1-flash-lite',
-  'gemini-2.5-flash',
-  'gemini-2.5-flash-lite',
-  'gemini-2.5-pro',
-  'gemini-2.0-flash',
-];
-
 const GROUNDED_MODELS = [
   'gemini-2.5-flash',
-  'gemini-2.0-flash',
 ];
 
 const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
@@ -24,13 +12,6 @@ export async function generateTripEstimate(formData) {
   }
 
   const prompt = buildPrompt(formData);
-  const config = {
-    temperature: 0.25,
-    maxOutputTokens: 2400,
-    responseMimeType: 'application/json',
-    tools: [{ googleSearch: {} }],
-  };
-
   let lastError = null;
 
   for (const model of GROUNDED_MODELS) {
@@ -45,40 +26,7 @@ export async function generateTripEstimate(formData) {
     }
   }
 
-  const { GoogleGenAI } = await import('@google/genai');
-  const ai = new GoogleGenAI({ apiKey });
-
-  for (const model of GEMINI_MODELS) {
-    try {
-      return await requestTripEstimate({ ai, model, prompt, config, formData });
-    } catch (error) {
-      lastError = normalizeSdkError(error);
-
-      if (lastError.code === 'TOOL_OR_SCHEMA') {
-        try {
-          return await requestTripEstimate({
-            ai,
-            model,
-            prompt,
-            config: {
-              temperature: config.temperature,
-              maxOutputTokens: config.maxOutputTokens,
-              responseMimeType: config.responseMimeType,
-            },
-            formData,
-          });
-        } catch (retryError) {
-          lastError = normalizeSdkError(retryError);
-        }
-      }
-
-      if (lastError.code === 'AUTH' || lastError.code === 'RATE_LIMIT') {
-        break;
-      }
-    }
-  }
-
-  if (lastError?.code === 'AUTH' || lastError?.code === 'RATE_LIMIT') {
+  if (lastError?.code === 'AUTH') {
     throw lastError;
   }
 
@@ -112,7 +60,6 @@ async function requestGroundedTripEstimate({ apiKey, model, prompt, formData }) 
           parts: [{ text: prompt }],
         },
       ],
-      tools: [{ google_search: {} }],
       generationConfig: {
         temperature: 0.1,
         maxOutputTokens: 2600,
@@ -127,7 +74,20 @@ async function requestGroundedTripEstimate({ apiKey, model, prompt, formData }) 
 
   const data = await response.json();
   const rawText = extractGeminiText(data);
-  const parsed = parseGeminiJson(rawText);
+  let parsed = parseGeminiJson(rawText);
+
+  if (!parseDistanceKm(parsed.estimatedDistance)) {
+    try {
+      const routeEstimate = await requestRouteDistanceOnly({ apiKey, formData });
+      parsed = {
+        ...parsed,
+        estimatedDistance: routeEstimate.estimatedDistance || parsed.estimatedDistance,
+        estimatedTravelTime: routeEstimate.estimatedTravelTime || parsed.estimatedTravelTime,
+      };
+    } catch {
+      // Keep the original response if the distance-only request is also unavailable.
+    }
+  }
 
   return normalizeTripResult(parsed, rawText, formData);
 }
@@ -178,7 +138,6 @@ Shape:
     },
     body: JSON.stringify({
       contents: [{ parts: [{ text: prompt }] }],
-      tools: [{ google_search: {} }],
       generationConfig: {
         temperature: 0.05,
         maxOutputTokens: 500,
@@ -193,19 +152,6 @@ Shape:
 
   const data = await response.json();
   return parseGeminiJson(extractGeminiText(data));
-}
-
-async function requestTripEstimate({ ai, model, prompt, config, formData }) {
-  const response = await ai.models.generateContent({
-    model,
-    contents: prompt,
-    config,
-  });
-
-  const rawText = response.text || '';
-  const parsed = parseGeminiJson(rawText);
-
-  return normalizeTripResult(parsed, rawText, formData);
 }
 
 function normalizeSdkError(error) {
