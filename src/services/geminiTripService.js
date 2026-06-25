@@ -15,7 +15,6 @@ const GROUNDED_MODELS = [
 ];
 
 const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
-const GEMINI_INTERACTIONS_API = 'https://generativelanguage.googleapis.com/v1beta/interactions';
 
 export async function generateTripEstimate(formData) {
   const apiKey = normalizeApiKey(import.meta.env.VITE_GEMINI_API_KEY);
@@ -101,19 +100,22 @@ function normalizeApiKey(value) {
 }
 
 async function requestGroundedTripEstimate({ apiKey, model, prompt, formData }) {
-  const response = await fetch(GEMINI_INTERACTIONS_API, {
+  const response = await fetch(`${GEMINI_API_BASE}/${model}:generateContent`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'x-goog-api-key': apiKey,
     },
     body: JSON.stringify({
-      model,
-      input: prompt,
-      tools: [{ type: 'google_search' }],
-      generation_config: {
+      contents: [
+        {
+          parts: [{ text: prompt }],
+        },
+      ],
+      tools: [{ google_search: {} }],
+      generationConfig: {
         temperature: 0.1,
-        max_output_tokens: 2600,
+        maxOutputTokens: 2600,
       },
     }),
   });
@@ -168,19 +170,18 @@ Shape:
 }
 `.trim();
 
-  const response = await fetch(GEMINI_INTERACTIONS_API, {
+  const response = await fetch(`${GEMINI_API_BASE}/gemini-2.5-flash:generateContent`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'x-goog-api-key': apiKey,
     },
     body: JSON.stringify({
-      model: 'gemini-3.5-flash',
-      input: prompt,
-      tools: [{ type: 'google_search' }],
-      generation_config: {
+      contents: [{ parts: [{ text: prompt }] }],
+      tools: [{ google_search: {} }],
+      generationConfig: {
         temperature: 0.05,
-        max_output_tokens: 500,
+        maxOutputTokens: 500,
       },
     }),
   });

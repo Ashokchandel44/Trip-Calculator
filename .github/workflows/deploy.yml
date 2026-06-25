@@ -36,6 +36,25 @@ jobs:
           fi
           echo "Gemini API secret found"
 
+      - name: Test Gemini API Secret
+        env:
+          GEMINI_SECRET: ${{ secrets.VITE_GEMINI_API_KEY || secrets.GEMINI_API_KEY }}
+        run: |
+          STATUS=$(curl -s -o /tmp/gemini-response.json -w "%{http_code}" \
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent" \
+            -H "Content-Type: application/json" \
+            -H "x-goog-api-key: $GEMINI_SECRET" \
+            -X POST \
+            -d '{"contents":[{"parts":[{"text":"Reply with ok"}]}]}')
+
+          if [ "$STATUS" != "200" ]; then
+            echo "Gemini API key test failed with HTTP $STATUS"
+            cat /tmp/gemini-response.json
+            exit 1
+          fi
+
+          echo "Gemini API key test passed"
+
       - name: Build project
         run: npm run build
         env:
