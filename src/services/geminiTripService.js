@@ -13,10 +13,21 @@ export async function generateTripEstimate(formData) {
 
   const prompt = buildPrompt(formData);
   let lastError = null;
+  let routeEstimate = null;
+
+  try {
+    routeEstimate = await requestRouteDistanceOnly({ apiKey, formData });
+  } catch (error) {
+    lastError = normalizeSdkError(error);
+
+    if (lastError.code === 'AUTH') {
+      throw lastError;
+    }
+  }
 
   for (const model of GROUNDED_MODELS) {
     try {
-      return await requestGroundedTripEstimate({ apiKey, model, prompt, formData });
+      return await requestGroundedTripEstimate({ apiKey, model, prompt, formData, routeEstimate });
     } catch (error) {
       lastError = normalizeSdkError(error);
 
@@ -31,7 +42,6 @@ export async function generateTripEstimate(formData) {
   }
 
   try {
-    const routeEstimate = await requestRouteDistanceOnly({ apiKey, formData });
     return buildLocalEstimate(formData, lastError, routeEstimate);
   } catch {
     return buildLocalEstimate(formData, lastError);
@@ -47,7 +57,7 @@ function normalizeApiKey(value) {
     .trim();
 }
 
-async function requestGroundedTripEstimate({ apiKey, model, prompt, formData }) {
+async function requestGroundedTripEstimate({ apiKey, model, prompt, formData, routeEstimate }) {
   const response = await fetch(`${GEMINI_API_BASE}/${model}:generateContent`, {
     method: 'POST',
     headers: {
@@ -76,13 +86,19 @@ async function requestGroundedTripEstimate({ apiKey, model, prompt, formData }) 
   const rawText = extractGeminiText(data);
   let parsed = parseGeminiJson(rawText);
 
-  if (!parseDistanceKm(parsed.estimatedDistance)) {
+  if (routeEstimate?.estimatedDistance || routeEstimate?.estimatedTravelTime) {
+    parsed = {
+      ...parsed,
+      estimatedDistance: routeEstimate.estimatedDistance || parsed.estimatedDistance,
+      estimatedTravelTime: routeEstimate.estimatedTravelTime || parsed.estimatedTravelTime,
+    };
+  } else if (!parseDistanceKm(parsed.estimatedDistance)) {
     try {
-      const routeEstimate = await requestRouteDistanceOnly({ apiKey, formData });
+      const fallbackRouteEstimate = await requestRouteDistanceOnly({ apiKey, formData });
       parsed = {
         ...parsed,
-        estimatedDistance: routeEstimate.estimatedDistance || parsed.estimatedDistance,
-        estimatedTravelTime: routeEstimate.estimatedTravelTime || parsed.estimatedTravelTime,
+        estimatedDistance: fallbackRouteEstimate.estimatedDistance || parsed.estimatedDistance,
+        estimatedTravelTime: fallbackRouteEstimate.estimatedTravelTime || parsed.estimatedTravelTime,
       };
     } catch {
       // Keep the original response if the distance-only request is also unavailable.
@@ -118,11 +134,13 @@ function extractGeminiText(data) {
 async function requestRouteDistanceOnly({ apiKey, formData }) {
   const prompt = `
 Return valid JSON only.
-Find the practical driving road distance and driving time for this route:
+Estimate the commonly accepted Google Maps-style practical driving distance and driving time for this route:
 From: ${formData.startingLocation}
 To: ${formData.destinationLocation}
 
-Use search-grounded/common map distance if available. Do not guess a generic value.
+Return the shortest normal car route distance, not straight-line distance.
+If exact live map data is unavailable, use the most commonly reported road distance for this route.
+Return one number, not a range. Keep it close to map distance and do not inflate it.
 Shape:
 {
   "estimatedDistance": "236 km",
